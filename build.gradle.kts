@@ -1,7 +1,7 @@
 val ktor_version: String by project
 val kotlin_version: String by project
 val logback_version: String by project
-val ktorm: String by project
+val koin_version: String by project
 
 plugins {
     application
@@ -20,15 +20,28 @@ repositories {
 }
 
 dependencies {
+
+    implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version")
+
+    // server
     implementation("io.ktor:ktor-server-core:$ktor_version")
     implementation("io.ktor:ktor-server-netty:$ktor_version")
 
+    // serialization
     implementation("io.ktor:ktor-serialization:$ktor_version")
 
-    implementation("org.postgresql:postgresql:42.3.1")
-    implementation("org.ktorm:ktorm-core:$ktorm")
+    // auth & JWT
+    implementation("io.ktor:ktor-auth:$ktor_version")
+    implementation("io.ktor:ktor-auth-jwt:$ktor_version")
 
+    // DataBase
+    implementation("org.postgresql:postgresql:42.3.1")
+
+    // log & test
     implementation("ch.qos.logback:logback-classic:$logback_version")
     testImplementation("io.ktor:ktor-server-tests:$ktor_version")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:$kotlin_version")
+
+    // Koin (dependency injection) for Kotlin apps
+    implementation("io.insert-koin:koin-ktor:$koin_version")
 }

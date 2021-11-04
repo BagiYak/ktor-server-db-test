@@ -1,6 +1,6 @@
 package com.example
 
-import com.example.plugins.configureRouting
+import com.example.plugins.helloWorldRouting
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlin.test.Test
@@ -9,7 +9,7 @@ import kotlin.test.assertEquals
 class ApplicationTest {
     @Test
     fun testRoot() {
-        withTestApplication({ configureRouting() }) {
+        withTestApplication({ helloWorldRouting() }) {
             handleRequest(HttpMethod.Get, "/").apply {
                 assertEquals(HttpStatusCode.OK, response.status())
                 assertEquals("Hello World!", response.content)

@@ -1,73 +1,83 @@
-import com.example.plugins.configureHTTP
-import com.example.plugins.configureRouting
+package com.example
+
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
+import com.example.controller.routes.api.v1.loginRoutes
+import com.example.controller.routes.public.helloWorldRouting
+import com.example.di.loginModule
 import com.example.plugins.configureSerialization
+import com.example.plugins.cors
+import com.example.plugins.logs
 import io.ktor.application.*
-import org.ktorm.database.Database
-import org.ktorm.dsl.from
-import org.ktorm.dsl.insert
-import org.ktorm.dsl.select
-import org.ktorm.schema.Table
-import org.ktorm.schema.long
-import org.ktorm.schema.timestamp
-import org.ktorm.schema.varchar
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
+import io.ktor.auth.*
+import io.ktor.auth.jwt.*
+import org.koin.ktor.ext.Koin
 
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
 fun Application.module() {
 
-    // to open in browsers
-    configureHTTP()
+    logs()
+
+    // CORS configurations
+    cors()
 
     // to accept application/json contentType request via http
     configureSerialization()
 
-    configureRouting()
+    // hello world - route to test public http
+    helloWorldRouting()
 
-    // Second variant how to connect to DB Postgresql - using framework Ktorm.org
-    val db_ktorm = Database.connect("jdbc:postgresql://localhost:5432/test_db", user = "postgres", password = "postgres")
-    println("db_ktorm: ${db_ktorm.name}")
-
-    // insert to table
-    db_ktorm.insert(Users) {
-        set(it.email, "test@test.kz")
-        set(it.password, "password")
-        set(it.firstname, "testName")
-        set(it.lastname, "testLastname")
-        set(it.picture_url, "picture_url")
-        set(it.phone, +77072201010)
+    // Declare Koin
+    install(Koin) {
+        modules(loginModule)
     }
 
-    // get all from table
-    for (row in db_ktorm.from(Users).select()) {
-        println()
-        println("email: " + row[Users.email])
-        println("password: " + row[Users.password])
-        println("firstname: " + row[Users.firstname])
-        println("lastname: " + row[Users.lastname])
-        println("picture_url: " + row[Users.picture_url])
-        println("phone: " + row[Users.phone])
-        println( "date_created utc-0: " + row[Users.date_created] )
-        println( "date_created toEpochMilli: " + row[Users.date_created]?.toEpochMilli() )
-        println( "local date now: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm")) )
-        println("date_last_logged_in utc-0: " + row[Users.date_last_logged_in])
-        println()
+    // login feature - Configure JWT settings (a custom jwt group in the application.conf)
+    val secret = environment.config.property("jwt.secret").getString()
+    val issuer = environment.config.property("jwt.issuer").getString()
+    val audience = environment.config.property("jwt.audience").getString()
+    val myRealm = environment.config.property("jwt.realm").getString()
+
+    install(Authentication) {
+
+        // JWT auth
+        jwt("auth-jwt") {
+
+            // The realm property allows you to set the realm to be passed in WWW-Authenticate header when accessing a protected route
+            realm = myRealm
+
+            // The verifier function allows you to verify a token format and its signature: HS256, you need to pass a JWTVerifier instance to verify a token
+            verifier(
+                JWT
+                    .require(Algorithm.HMAC256(secret))
+                    .withAudience(audience)
+                    .withIssuer(issuer)
+                    .build()
+            )
+
+            // The validate function allows you to perform additional validations on the JWT payload in the following way
+            validate { credential ->
+
+                log.info("START validate credential")
+
+                val email = credential.payload.getClaim("email").asString()
+
+                // Check the credential parameter, which represents a JWTCredential object and contains the JWT payload. In the example below, the value of a custom email claim is checked.
+                if (email != "") {
+                    log.info("Ok: validate credential email: $email")
+                    // In a case of successful authentication, return JWTPrincipal. If authentication fails, return null
+                    JWTPrincipal(credential.payload)
+                } else {
+                    log.info("Bad: validate credential email: typed wrong $email")
+                    null
+                }
+            }
+        }
     }
 
-}
+    // login feature - route
+    loginRoutes(audience, issuer, secret, myRealm)
 
-
-// create Kotlin objects to describe your table schemas
-object Users : Table<Nothing>("users") {
-    val id = long("id").primaryKey()
-    val email = varchar("email")
-    val password = varchar("password")
-    val firstname = varchar("firstname")
-    val lastname = varchar("lastname")
-    val picture_url = varchar("picture_url")
-    val phone = long("phone")
-    val date_created = timestamp("date_created")
-    val date_last_logged_in = timestamp("date_last_logged_in")
 }
