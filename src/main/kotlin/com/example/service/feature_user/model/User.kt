@@ -1,6 +1,6 @@
 package com.example.service.feature_user.model
 
-import com.example.service.util.Roles
+import com.example.util.Roles
 import kotlinx.serialization.Serializable
 
 @Serializable

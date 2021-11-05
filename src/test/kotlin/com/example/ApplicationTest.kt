@@ -1,6 +1,6 @@
 package com.example
 
-import com.example.plugins.helloWorldRouting
+import com.example.controller.routes.public.helloWorldRouting
 import io.ktor.http.*
 import io.ktor.server.testing.*
 import kotlin.test.Test

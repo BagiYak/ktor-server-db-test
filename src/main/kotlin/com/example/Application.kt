@@ -2,37 +2,78 @@ package com.example
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.example.config.util.setupConfig
 import com.example.controller.routes.api.v1.loginRoutes
 import com.example.controller.routes.public.helloWorldRouting
-import com.example.di.loginModule
+import com.example.database.DatabaseFactory
+import com.example.database.tables.RolesTable
+import com.example.database.tables.UsersTable
+import com.example.di.appModule
 import com.example.plugins.configureSerialization
 import com.example.plugins.cors
 import com.example.plugins.logs
+import com.example.util.Roles
 import io.ktor.application.*
 import io.ktor.auth.*
 import io.ktor.auth.jwt.*
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.transactions.transaction
+import org.koin.core.annotation.KoinReflectAPI
 import org.koin.ktor.ext.Koin
+import org.koin.ktor.ext.inject
+import org.koin.core.module.Module
 
 
 fun main(args: Array<String>): Unit = io.ktor.server.netty.EngineMain.main(args)
 
-fun Application.module() {
+@KoinReflectAPI
+fun Application.module(testing: Boolean = false, koinModules: List<Module> = listOf(appModule)) {
 
+    // Declare Koin dependency injection
+    install(Koin) {
+        modules(koinModules)
+    }
+
+    // Server, Database setup configurations and so on
+    setupConfig()
+
+    // Database connection configurations
+    val databaseFactory by inject<DatabaseFactory>()
+    databaseFactory.connect()
+
+    transaction {
+        // print sql to std-out
+        addLogger(StdOutSqlLogger)
+
+        SchemaUtils.create (RolesTable)
+        SchemaUtils.create (UsersTable)
+
+        // insert
+        Roles.values().forEachIndexed { index, roles ->
+            RolesTable.insert {
+//                it[role_id] = index+1
+                it[role_name] = roles.toString()
+            }
+        }
+
+        // 'select *' SQL: SELECT id, name FROM RolesTable
+        println("RolesTable: ${RolesTable.selectAll()}")
+        RolesTable.selectAll().forEach {
+            println("name Role: ${it[RolesTable.role_name]}")
+        }
+    }
+
+    // logs configurations by slf4j library
     logs()
 
     // CORS configurations
     cors()
 
-    // to accept application/json contentType request via http
+    // Serialization configurations to accept application/json contentType request via http
     configureSerialization()
 
     // hello world - route to test public http
     helloWorldRouting()
-
-    // Declare Koin
-    install(Koin) {
-        modules(loginModule)
-    }
 
     // login feature - Configure JWT settings (a custom jwt group in the application.conf)
     val secret = environment.config.property("jwt.secret").getString()
@@ -40,6 +81,7 @@ fun Application.module() {
     val audience = environment.config.property("jwt.audience").getString()
     val myRealm = environment.config.property("jwt.realm").getString()
 
+    // Authentication configurations
     install(Authentication) {
 
         // JWT auth

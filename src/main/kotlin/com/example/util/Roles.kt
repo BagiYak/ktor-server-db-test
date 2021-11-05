@@ -1,4 +1,4 @@
-package com.example.service.util
+package com.example.util
 
 enum class Roles {
     USER, ADMIN

@@ -30,9 +30,12 @@ fun Application.loginRoutes(
             // receives user credentials sent as a JSON object and converts it to a User class object
             val user = call.receive<User>()
 
+            val loginResult = userUseCases.login(user, audience, issuer, secret, myRealm)
+            log.info("loginResult: $loginResult")
+
             // send json response with Token or Bad message
             call.respond(
-                message = userUseCases.login(user, audience, issuer, secret, myRealm)
+                message = loginResult
             )
 
             log.info("END Login")

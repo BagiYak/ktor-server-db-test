@@ -18,7 +18,7 @@ class LoginUseCase(
         // Check email and password if Bad return Bad token info
         if(user.email.isBlank() || !user.email.contains('@')) {
             return hashMapOf(
-                "message" to "Bad: check email/password: wrong typo in email - '${user.email}'"
+                "message" to "failed login: check email/password: wrong typo in email - '${user.email}'"
             )
         }
 
